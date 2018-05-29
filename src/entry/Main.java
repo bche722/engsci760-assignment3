@@ -9,7 +9,7 @@ import java.util.Scanner;
 
 public class Main {
 
-	private static final String fileName = "ProbA";
+	private static String fileName = "ProbA";
 
 	private static double[] weight;
 	private static double[][] position;
@@ -23,11 +23,16 @@ public class Main {
 		positionReader("src/data/Positions.txt");
 		bestMeasures = new ArrayList<Double>();
 		tempMeasures = new ArrayList<Double>();
+		
 		nextDescentSearch(solution);
 		nextDescentSearch(solution);
 		write();
-		// tabuSearch(solution);
-		nextDescentSearch200(solution);
+		
+		nextDescentSearch200("ProbA");
+		nextDescentSearch200("ProbB");
+		nextDescentSearch200("ProbC");
+		
+		tabuSearch();
 	}
 
 	public static void weightReader(String path) {
@@ -65,7 +70,9 @@ public class Main {
 		}
 	}
 
-	public static void tabuSearch(int[] s) {
+	public static void tabuSearch() {
+		weightReader("src/data/ProbA.txt");
+		tempMeasures = new ArrayList<Double>();
 		boolean[][] flag = new boolean[120][120];
 		int banListSize = Math.min(20, weight.length / 3);
 		int[][] banList = new int[banListSize][2];
@@ -76,13 +83,12 @@ public class Main {
 		double currentY = 0;
 		double sumWeight = 0;
 		for (int i = 0; i < 120; i++) {
-			currentX += weight[s[i]] * position[i][0];
-			currentY += weight[s[i]] * position[i][1];
-			sumWeight += weight[s[i]];
+			currentX += weight[solution[i]] * position[i][0];
+			currentY += weight[solution[i]] * position[i][1];
+			sumWeight += weight[solution[i]];
 		}
-		int[] current = s.clone();
+		int[] current = solution.clone();
 		while (count < 100000 && count < worsen * 2) {
-			System.out.println((Math.abs(currentX) + 5 * Math.abs(currentY)) / sumWeight);
 			int[] currentPosition = new int[2];
 			double iterationBestX = Double.POSITIVE_INFINITY;
 			double iterationBestY = Double.POSITIVE_INFINITY;
@@ -112,6 +118,7 @@ public class Main {
 			// check whether the solution become worse and change the stop condition
 			double currentMeasure = Math.abs(currentX) + 5 * Math.abs(currentY);
 			double iterationBestMeasure = Math.abs(iterationBestX) + 5 * Math.abs(iterationBestY);
+			tempMeasures.add(Math.log10(iterationBestMeasure/sumWeight));
 			if (currentMeasure < iterationBestMeasure && worsen == 50000) {
 				worsen = count;
 			}
@@ -128,6 +135,18 @@ public class Main {
 			banList[count % banListSize][1] = currentPosition[1];
 			// Increase the iteration count
 			count++;
+		}
+		
+		try {
+			PrintWriter pw = new PrintWriter("src/output/TabuSearch.txt");
+			for (int i = 0; i < tempMeasures.size(); i++) {
+				pw.write(tempMeasures.get(i) + "\n");
+			}
+			pw.flush();
+			pw.close();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 
@@ -175,26 +194,27 @@ public class Main {
 		}
 	}
 
-	public static void nextDescentSearch200(int[] s) {
+	public static void nextDescentSearch200(String name) {
+		weightReader("src/data/" + name + ".txt");
 		double bestX = 0;
 		double bestY = 0;
 		double sumWeight = 0;
 		for (int i = 0; i < 120; i++) {
-			bestX += weight[s[i]] * position[i][0];
-			bestY += weight[s[i]] * position[i][1];
-			sumWeight += weight[s[i]];
+			bestX += weight[solution[i]] * position[i][0];
+			bestY += weight[solution[i]] * position[i][1];
+			sumWeight += weight[solution[i]];
 		}
-		int[] bestSolution = s.clone();
+		int[] bestSolution = solution.clone();
 		double bestMeasure = Math.abs(bestX) + 5 * Math.abs(bestY);
 		for (int i = 0; i < 200; i++) {
-			shuffle(s);
+			shuffle(solution);
 			double iterationBestX = 0;
 			double iterationBestY = 0;
 			for (int j = 0; j < 120; j++) {
-				iterationBestX += weight[s[j]] * position[j][0];
-				iterationBestY += weight[s[j]] * position[j][1];
+				iterationBestX += weight[solution[j]] * position[j][0];
+				iterationBestY += weight[solution[j]] * position[j][1];
 			}
-			int[] iterationBestSolution = s.clone();
+			int[] iterationBestSolution = solution.clone();
 			double iterationBestMeasure = Math.abs(iterationBestX) + 5 * Math.abs(iterationBestY);
 			boolean flag = true;
 			while (flag) {
@@ -231,12 +251,22 @@ public class Main {
 				bestMeasure = iterationBestMeasure;
 			}
 		}
-		System.out.println(bestMeasure/sumWeight);
+		try {
+			PrintWriter pw = new PrintWriter("src/output/" + name + "output.txt");
+			pw.write(bestMeasure/sumWeight + "\n");
+			for (int i = 0; i < bestSolution.length; i++) {
+				pw.write(bestSolution[i] + "\n");
+			}
+			pw.flush();
+			pw.close();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
 	}
 
 	public static void write() {
 		try {
-			PrintWriter pw = new PrintWriter("src/output.txt");
+			PrintWriter pw = new PrintWriter("src/output/output.txt");
 			for (int i = 0; i < bestMeasures.size(); i++) {
 				pw.write(bestMeasures.get(i) + "	");
 				pw.write(tempMeasures.get(i) + "\n");
