@@ -72,6 +72,7 @@ public class Main {
 
 	public static void tabuSearch() {
 		weightReader("src/data/ProbA.txt");
+		bestMeasures = new ArrayList<Double>();
 		tempMeasures = new ArrayList<Double>();
 		boolean[][] flag = new boolean[120][120];
 		int banListSize = Math.min(20, weight.length / 3);
@@ -92,6 +93,7 @@ public class Main {
 			int[] currentPosition = new int[2];
 			double iterationBestX = Double.POSITIVE_INFINITY;
 			double iterationBestY = Double.POSITIVE_INFINITY;
+			double tempMeasure = 0;
 			// Find the best solution in each iteration with the tabu list
 			for (int a = 0; a < 120; a++) {
 				for (int b = a + 1; b < 120; b++) {
@@ -104,7 +106,7 @@ public class Main {
 						double tempY = currentY + weight[current[a]] * position[b][1]
 								+ weight[current[b]] * position[a][1] - weight[current[a]] * position[a][1]
 								- weight[current[b]] * position[b][1];
-						double tempMeasure = Math.abs(tempX) + 5 * Math.abs(tempY);
+						tempMeasure = Math.abs(tempX) + 5 * Math.abs(tempY);
 						double iterationBestMeasure = Math.abs(iterationBestX) + 5 * Math.abs(iterationBestY);
 						if (tempMeasure < iterationBestMeasure) {
 							iterationBestX = tempX;
@@ -118,7 +120,8 @@ public class Main {
 			// check whether the solution become worse and change the stop condition
 			double currentMeasure = Math.abs(currentX) + 5 * Math.abs(currentY);
 			double iterationBestMeasure = Math.abs(iterationBestX) + 5 * Math.abs(iterationBestY);
-			tempMeasures.add(Math.log10(iterationBestMeasure/sumWeight));
+			tempMeasures.add(Math.log10(currentMeasure/sumWeight));
+			bestMeasures.add(Math.log10(tempMeasure/sumWeight));
 			if (currentMeasure < iterationBestMeasure && worsen == 50000) {
 				worsen = count;
 			}
@@ -140,7 +143,8 @@ public class Main {
 		try {
 			PrintWriter pw = new PrintWriter("src/output/TabuSearch.txt");
 			for (int i = 0; i < tempMeasures.size(); i++) {
-				pw.write(tempMeasures.get(i) + "\n");
+					pw.write(bestMeasures.get(i) + "	");
+					pw.write(tempMeasures.get(i) + "\n");
 			}
 			pw.flush();
 			pw.close();
