@@ -7,8 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
-import javafx.util.Pair;
-
 public class Main {
 
 	private static final String fileName = "ProbA";
@@ -25,8 +23,11 @@ public class Main {
 		positionReader("src/data/Positions.txt");
 		bestMeasures = new ArrayList<Double>();
 		tempMeasures = new ArrayList<Double>();
-		// nextDescentSearch200(solution);
-		tabuSearch(solution);
+		nextDescentSearch(solution);
+		nextDescentSearch(solution);
+		write();
+		// tabuSearch(solution);
+		nextDescentSearch200(solution);
 	}
 
 	public static void weightReader(String path) {
@@ -64,26 +65,6 @@ public class Main {
 		}
 	}
 
-	public static double getMeasure(int[] s) {
-		double sumX = 0;
-		double sumY = 0;
-		double sumWeight = 0;
-		for (int i = 0; i < 120; i++) {
-			sumX += weight[s[i]] * position[i][0];
-			sumY += weight[s[i]] * position[i][1];
-			sumWeight += weight[s[i]];
-		}
-		double measure = Math.abs(sumX / sumWeight) + 5 * Math.abs(sumY / sumWeight);
-		return measure;
-	}
-
-	public static int[] swap(int[] s, int a, int b) {
-		int[] result = s.clone();
-		result[a] = s[b];
-		result[b] = s[a];
-		return result;
-	}
-
 	public static void tabuSearch(int[] s) {
 		boolean[][] flag = new boolean[120][120];
 		int banListSize = Math.min(20, weight.length / 3);
@@ -105,6 +86,7 @@ public class Main {
 			int[] currentPosition = new int[2];
 			double iterationBestX = Double.POSITIVE_INFINITY;
 			double iterationBestY = Double.POSITIVE_INFINITY;
+			// Find the best solution in each iteration with the tabu list
 			for (int a = 0; a < 120; a++) {
 				for (int b = a + 1; b < 120; b++) {
 					if (flag[a][b] || (weight[current[a]] == 0 && weight[current[b]] == 0) || a == b - 60) {
@@ -127,89 +109,129 @@ public class Main {
 					}
 				}
 			}
+			// check whether the solution become worse and change the stop condition
+			double currentMeasure = Math.abs(currentX) + 5 * Math.abs(currentY);
+			double iterationBestMeasure = Math.abs(iterationBestX) + 5 * Math.abs(iterationBestY);
+			if (currentMeasure < iterationBestMeasure && worsen == 50000) {
+				worsen = count;
+			}
+			// change the current solution to the best solution in this iteration
 			int temp = current[currentPosition[0]];
 			current[currentPosition[0]] = current[currentPosition[1]];
 			current[currentPosition[1]] = temp;
+			currentX = iterationBestX;
+			currentY = iterationBestY;
+			// Add the swap to the ban list and using the ban list to update the matrix
 			flag[banList[count % banListSize][0]][banList[count % banListSize][1]] = false;
 			flag[currentPosition[0]][currentPosition[1]] = true;
 			banList[count % banListSize][0] = currentPosition[0];
 			banList[count % banListSize][1] = currentPosition[1];
-			double currentMeasure = Math.abs(currentX) + 5 * Math.abs(currentY);
-			double iterationBestMeasure = Math.abs(iterationBestX) + 5 * Math.abs(iterationBestY);
-			if (currentMeasure < iterationBestMeasure && worsen == 50000) {
-					worsen = count;
-			}
-			currentX = iterationBestX;
-			currentY = iterationBestY;
+			// Increase the iteration count
 			count++;
 		}
-		System.out.println(count);
 	}
 
-	public static void nextDescentSearch2(int[] s) {
+	public static void nextDescentSearch(int[] s) {
+		shuffle(s);
+		double bestX = 0;
+		double bestY = 0;
+		double sumWeight = 0;
+		for (int i = 0; i < 120; i++) {
+			bestX += weight[s[i]] * position[i][0];
+			bestY += weight[s[i]] * position[i][1];
+			sumWeight += weight[s[i]];
+		}
 		int[] bestSolution = s.clone();
-		double bestMeasure = getMeasure(bestSolution);
-		int[] temp;
+		double bestMeasure = Math.abs(bestX) + 5 * Math.abs(bestY);
 		boolean flag = true;
 		while (flag) {
 			flag = false;
 			for (int a = 0; a < 120; a++) {
-				for (int b = 0; b < 120; b++) {
-					temp = swap(bestSolution, a, b);
-					double tempMeasure = getMeasure(temp);
-					if (tempMeasure < bestMeasure) {
-						bestSolution = temp;
-						bestMeasure = tempMeasure;
-						flag = true;
+				for (int b = a + 1; b < 120; b++) {
+					if (a == b - 60) {
+						continue;
+					} else {
+						double tempX = bestX + weight[bestSolution[a]] * position[b][0]
+								+ weight[bestSolution[b]] * position[a][0] - weight[bestSolution[a]] * position[a][0]
+								- weight[bestSolution[b]] * position[b][0];
+						double tempY = bestY + weight[bestSolution[a]] * position[b][1]
+								+ weight[bestSolution[b]] * position[a][1] - weight[bestSolution[a]] * position[a][1]
+								- weight[bestSolution[b]] * position[b][1];
+						double tempMeasure = Math.abs(tempX) + 5 * Math.abs(tempY);
+						if (tempMeasure < bestMeasure) {
+							int temp = bestSolution[a];
+							bestSolution[a] = bestSolution[b];
+							bestSolution[b] = temp;
+							bestX = tempX;
+							bestY = tempY;
+							bestMeasure = tempMeasure;
+							flag = true;
+						}
+						bestMeasures.add(Math.log10(bestMeasure/sumWeight));
+						tempMeasures.add(Math.log10(tempMeasure/sumWeight));
 					}
-					bestMeasures.add(bestMeasure);
-					tempMeasures.add(tempMeasure);
 				}
 			}
 		}
-		System.out.println(bestMeasure);
-		System.out.println(bestMeasures.size());
 	}
 
 	public static void nextDescentSearch200(int[] s) {
+		double bestX = 0;
+		double bestY = 0;
+		double sumWeight = 0;
+		for (int i = 0; i < 120; i++) {
+			bestX += weight[s[i]] * position[i][0];
+			bestY += weight[s[i]] * position[i][1];
+			sumWeight += weight[s[i]];
+		}
 		int[] bestSolution = s.clone();
+		double bestMeasure = Math.abs(bestX) + 5 * Math.abs(bestY);
 		for (int i = 0; i < 200; i++) {
 			shuffle(s);
-			int[] newSolution = nextDescentSearch(s);
-			if (getMeasure(newSolution) < getMeasure(bestSolution)) {
-				bestSolution = newSolution;
+			double iterationBestX = 0;
+			double iterationBestY = 0;
+			for (int j = 0; j < 120; j++) {
+				iterationBestX += weight[s[j]] * position[j][0];
+				iterationBestY += weight[s[j]] * position[j][1];
 			}
-		}
-
-		try {
-			PrintWriter pw = new PrintWriter("src/" + fileName + "output.txt");
-			pw.write(getMeasure(bestSolution) + "\n");
-			for (int i = 0; i < bestSolution.length; i++) {
-				pw.write(bestSolution[i] + "\n");
-			}
-			pw.flush();
-			pw.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-	}
-
-	public static int[] nextDescentSearch(int[] s) {
-		int[] bestSolution = s.clone();
-		boolean flag;
-		do {
-			flag = false;
-			for (int a = 0; a < 120; a++) {
-				for (int b = 0; b < 120; b++) {
-					int[] temp = swap(bestSolution, a, b);
-					if (getMeasure(temp) < getMeasure(bestSolution)) {
-						bestSolution = temp;
-						flag = true;
+			int[] iterationBestSolution = s.clone();
+			double iterationBestMeasure = Math.abs(iterationBestX) + 5 * Math.abs(iterationBestY);
+			boolean flag = true;
+			while (flag) {
+				flag = false;
+				for (int a = 0; a < 120; a++) {
+					for (int b = a + 1; b < 120; b++) {
+						if (a == b - 60) {
+							continue;
+						} else {
+							double tempX = iterationBestX + weight[iterationBestSolution[a]] * position[b][0]
+									+ weight[iterationBestSolution[b]] * position[a][0]
+									- weight[iterationBestSolution[a]] * position[a][0]
+									- weight[iterationBestSolution[b]] * position[b][0];
+							double tempY = iterationBestY + weight[iterationBestSolution[a]] * position[b][1]
+									+ weight[iterationBestSolution[b]] * position[a][1]
+									- weight[iterationBestSolution[a]] * position[a][1]
+									- weight[iterationBestSolution[b]] * position[b][1];
+							double tempMeasure = Math.abs(tempX) + 5 * Math.abs(tempY);
+							if (tempMeasure < iterationBestMeasure) {
+								int temp = iterationBestSolution[a];
+								iterationBestSolution[a] = iterationBestSolution[b];
+								iterationBestSolution[b] = temp;
+								iterationBestX = tempX;
+								iterationBestY = tempY;
+								iterationBestMeasure = tempMeasure;
+								flag = true;
+							}
+						}
 					}
 				}
 			}
-		} while (flag);
-		return bestSolution;
+			if (iterationBestMeasure < bestMeasure) {
+				bestSolution = iterationBestSolution;
+				bestMeasure = iterationBestMeasure;
+			}
+		}
+		System.out.println(bestMeasure/sumWeight);
 	}
 
 	public static void write() {
